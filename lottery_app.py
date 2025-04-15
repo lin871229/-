@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import random
@@ -19,35 +18,50 @@ if uploaded_file:
     df.columns = [
         "編號", "備註", "單位名稱", "設立區域", "地址", "電話", "Email",
         "長照服務項目", "居家服務履約區域", "居家喘息服務履約區域",
-        "短照喘息履約區域", "服務時段", "承辦人員"
+        "短照喘息服務履約區域", "服務時段", "承辦人員"
     ]
 
-    # 擷取所有出現過的區域
-    area_cols = ["居家喘息服務履約區域", "短照喘息履約區域"]
-    all_area_texts = df[area_cols[0]].fillna('') + '\n' + df[area_cols[1]].fillna('')
-    split_texts = all_area_texts.str.split('[、，\n()（）]')
+    # 篩選高雄地區的區域
+    kaohsiung_areas = [
+        "苓雅區", "三民區", "鳳山區", "左營區", "楠梓區", "小港區", "鼓山區",
+        "鹽埕區", "前金區", "新興區", "旗山區", "旗津區", "苓雅分區", "三民分區",
+        "左楠分區", "小港分區", "岡山區", "橋頭區", "林園區", "大寮區", "大樹區"
+    ]
+
+    # 擷取高雄地區區域
+    area_cols = ["居家喘息服務履約區域", "短照喘息服務履約區域"]
+    all_area_texts = df[area_cols[0]].fillna('') + '\\n' + df[area_cols[1]].fillna('')
+    split_texts = all_area_texts.str.split('[、，\\n()（）]')
     all_areas = set()
     for lst in split_texts:
-        all_areas.update([a.strip() for a in lst if a and "區" in a and len(a.strip()) <= 5])
+        all_areas.update([a.strip() for a in lst if a and "區" in a and a in kaohsiung_areas])
     area_options = sorted(all_areas)
 
     # 側邊欄選擇區域
     st.sidebar.header("🎯 篩選條件")
-    selected_area = st.sidebar.selectbox("選擇區域名稱：", area_options)
+    selected_area_respite = st.sidebar.selectbox("選擇居家喘息服務履約區域：", area_options)
+    selected_area_shortterm = st.sidebar.selectbox("選擇短照喘息服務履約區域：", area_options)
     num_to_draw = st.sidebar.number_input("抽出幾間機構：", min_value=1, max_value=20, value=3)
 
-    # 進行篩選（兩欄皆可）
-    df_match1 = df[df["居家喘息服務履約區域"].fillna('').str.contains(selected_area)]
-    df_match2 = df[df["短照喘息履約區域"].fillna('').str.contains(selected_area)]
-    combined_df = pd.concat([df_match1, df_match2]).drop_duplicates(subset="單位名稱")
-
-    st.markdown(f"### ✅ 履約區域包含 `{selected_area}` 的機構，共 {len(combined_df)} 間")
-
-    if len(combined_df) > 0:
-        sample_n = min(num_to_draw, len(combined_df))
-        sampled_df = combined_df.sample(n=sample_n, random_state=random.randint(1,9999))
-        st.dataframe(sampled_df[["單位名稱", "設立區域", "地址", "電話"]].reset_index(drop=True))
+    # 進行篩選（兩欄各自篩選）
+    df_match_respite = df[df["居家喘息服務履約區域"].fillna('').str.contains(selected_area_respite)]
+    df_match_shortterm = df[df["短照喘息服務履約區域"].fillna('').str.contains(selected_area_shortterm)]
+    
+    # 分別抽取
+    st.markdown(f"### ✅ 居家喘息服務履約區域 `{selected_area_respite}` 的機構")
+    if len(df_match_respite) > 0:
+        sample_respite_n = min(num_to_draw, len(df_match_respite))
+        sampled_respite_df = df_match_respite.sample(n=sample_respite_n, random_state=random.randint(1,9999))
+        st.dataframe(sampled_respite_df[["單位名稱", "設立區域", "地址", "電話"]].reset_index(drop=True))
     else:
-        st.warning("找不到符合條件的機構。")
+        st.warning(f"找不到符合 `{selected_area_respite}` 區域的機構。")
+
+    st.markdown(f"### ✅ 短照喘息服務履約區域 `{selected_area_shortterm}` 的機構")
+    if len(df_match_shortterm) > 0:
+        sample_shortterm_n = min(num_to_draw, len(df_match_shortterm))
+        sampled_shortterm_df = df_match_shortterm.sample(n=sample_shortterm_n, random_state=random.randint(1,9999))
+        st.dataframe(sampled_shortterm_df[["單位名稱", "設立區域", "地址", "電話"]].reset_index(drop=True))
+    else:
+        st.warning(f"找不到符合 `{selected_area_shortterm}` 區域的機構。")
 else:
     st.info("請先上傳 Excel 檔案。")
