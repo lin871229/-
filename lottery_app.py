@@ -41,27 +41,35 @@ if uploaded_file:
     st.sidebar.header("🎯 篩選條件")
     selected_area_respite = st.sidebar.selectbox("選擇居家喘息服務履約區域：", area_options)
     selected_area_shortterm = st.sidebar.selectbox("選擇短照喘息服務履約區域：", area_options)
-    num_to_draw = st.sidebar.number_input("抽出幾間機構：", min_value=1, max_value=20, value=3)
+    num_to_draw = 1  # 每次只抽取一間機構
 
     # 進行篩選（兩欄各自篩選）
     df_match_respite = df[df["居家喘息服務履約區域"].fillna('').str.contains(selected_area_respite)]
     df_match_shortterm = df[df["短照喘息服務履約區域"].fillna('').str.contains(selected_area_shortterm)]
     
+    # 抽取過的機構儲存
+    if 'used_respite' not in st.session_state:
+        st.session_state.used_respite = set()
+    if 'used_shortterm' not in st.session_state:
+        st.session_state.used_shortterm = set()
+
     # 分別抽取
     st.markdown(f"### ✅ 居家喘息服務履約區域 `{selected_area_respite}` 的機構")
-    if len(df_match_respite) > 0:
-        sample_respite_n = min(num_to_draw, len(df_match_respite))
-        sampled_respite_df = df_match_respite.sample(n=sample_respite_n, random_state=random.randint(1,9999))
-        st.dataframe(sampled_respite_df[["單位名稱", "設立區域", "地址", "電話"]].reset_index(drop=True))
+    available_respite = df_match_respite[~df_match_respite["單位名稱"].isin(st.session_state.used_respite)]
+    if len(available_respite) > 0:
+        drawn_respite = available_respite.sample(n=1, random_state=random.randint(1, 9999))
+        st.session_state.used_respite.add(drawn_respite["單位名稱"].iloc[0])  # 將抽取的機構標記為已使用
+        st.dataframe(drawn_respite[["單位名稱", "設立區域", "地址", "電話"]].reset_index(drop=True))
     else:
-        st.warning(f"找不到符合 `{selected_area_respite}` 區域的機構。")
+        st.warning(f"找不到更多符合 `{selected_area_respite}` 區域的機構。")
 
     st.markdown(f"### ✅ 短照喘息服務履約區域 `{selected_area_shortterm}` 的機構")
-    if len(df_match_shortterm) > 0:
-        sample_shortterm_n = min(num_to_draw, len(df_match_shortterm))
-        sampled_shortterm_df = df_match_shortterm.sample(n=sample_shortterm_n, random_state=random.randint(1,9999))
-        st.dataframe(sampled_shortterm_df[["單位名稱", "設立區域", "地址", "電話"]].reset_index(drop=True))
+    available_shortterm = df_match_shortterm[~df_match_shortterm["單位名稱"].isin(st.session_state.used_shortterm)]
+    if len(available_shortterm) > 0:
+        drawn_shortterm = available_shortterm.sample(n=1, random_state=random.randint(1, 9999))
+        st.session_state.used_shortterm.add(drawn_shortterm["單位名稱"].iloc[0])  # 將抽取的機構標記為已使用
+        st.dataframe(drawn_shortterm[["單位名稱", "設立區域", "地址", "電話"]].reset_index(drop=True))
     else:
-        st.warning(f"找不到符合 `{selected_area_shortterm}` 區域的機構。")
+        st.warning(f"找不到更多符合 `{selected_area_shortterm}` 區域的機構。")
 else:
     st.info("請先上傳 Excel 檔案。")
